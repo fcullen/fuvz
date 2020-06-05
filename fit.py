@@ -319,8 +319,6 @@ class BurstWeights(object):
 
 		self.model_type = 'sb99'
 
-		print("BURST-WEIGHT FIT: Loading models ...")
-
 		self.ages = ages
 		self.model_zs = metallicities
 
