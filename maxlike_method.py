@@ -101,11 +101,14 @@ def fn_fit_residuals(x, *args, **kwargs):
 
 	for i, (k, v) in enumerate(kwargs['models'].items()):
 
-		model_flux += x[i] * v['flam']
+		if kwargs['factor_scale'] == 'log':
+			model_flux += 10**x[i] * v['flam']
+		else:
+			model_flux += x[i] * v['flam']
 
 	flam_model = model_flux[fuv_mask]
 
-	alam = utils.attenuation_salim_2018(wl=wl_fit/1.e4, av=x[-3], B=x[-2], delta=x[-1])
+	alam = utils.attenuation_salim_2018(wl=wl_fit/1.e4, av=x[-1], B=0.0, delta=0.0)
 	flam_model *= np.power(10, -0.4 * alam)
 
 	flam_model *= normalize_model_to_spec(flam_model=flam_model, flam_obs=flam_fit,
@@ -114,8 +117,7 @@ def fn_fit_residuals(x, *args, **kwargs):
 	return flam_model - flam_fit
 
 
-
-def plot_fit(x, wl, flam, flam_err, stellar_models, fuv_mask_type, ndim_fit):
+def plot_fit(x, wl, flam, flam_err, stellar_models, fuv_mask_type, ndim_fit, factor_scale):
 
 	fuv_mask = get_fuv_continuum_mask(wl, fuv_mask_type=fuv_mask_type)
 
@@ -128,9 +130,12 @@ def plot_fit(x, wl, flam, flam_err, stellar_models, fuv_mask_type, ndim_fit):
 
 	for i, (k, v) in enumerate(stellar_models.items()):
 
-		model_flux += x[i] * v['flam']
+		if factor_scale == 'log':
+			model_flux += 10**x[i] * v['flam']
+		else:
+			model_flux += x[i] * v['flam']
 
-	alam = utils.attenuation_salim_2018(wl=wl/1.e4, av=x[-3], B=x[-2], delta=x[-1])
+	alam = utils.attenuation_salim_2018(wl=wl/1.e4, av=x[-1], B=0.0, delta=0.0)
 	model_flux *= np.power(10, -0.4 * alam)
 
 	flam_model_norm = model_flux[fuv_mask]
@@ -142,15 +147,14 @@ def plot_fit(x, wl, flam, flam_err, stellar_models, fuv_mask_type, ndim_fit):
 	rchi2 = np.sum(resid ** 2.) / dof
 	print(rchi2)
 
-	np.savetxt(fname='/Users/fcullen/Desktop/test.spec', X=np.column_stack((wl,model_flux)))
+	#np.savetxt(fname='/Users/fcullen/Desktop/test.spec', X=np.column_stack((wl,model_flux)))
 
 	ax.plot(wl, model_flux, color='green', ds='steps', lw=1.)
 
 	plt.show()
 
 
-
-def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_type='full', show_fit=False):
+def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_type='full', show_fit=False, x0=None, factor_scale='log'):
 	"""
 	Fit a spectrum using the maximum likelihood method a la Chisholm
 	"""
@@ -160,15 +164,19 @@ def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_typ
 
 	ndim_sps = ages.shape[0] * metallicities.shape[0]
 
-	x0 = np.ones(ndim_sps + 3)
+	# set initial guesses to 1 if none supplied:
+	if x0 is None:
+		x0 = np.ones(ndim_sps + 1)
 
 	inps = {'wl': wl, 'flam': flam, 'flam_err': flam_err,
-		'fuv_mask_type': fuv_mask_type, 'models': stellar_models}
+		'fuv_mask_type': fuv_mask_type, 'models': stellar_models, 'factor_scale': factor_scale}
 
-	bounds_lower = np.zeros_like(x0)
-	bounds_lower[-1] = -5.0
-
-	bounds_upper= np.ones_like(bounds_lower) * np.inf
+	if factor_scale == 'log':
+		bounds_lower = -1. * np.ones_like(x0) * np.inf
+		bounds_upper= np.ones_like(x0) * np.inf
+	else:
+		bounds_lower = np.zeros_like(x0)
+		bounds_upper= np.ones_like(x0) * np.inf
 
 	result = least_squares(fun=fn_fit_residuals, x0=x0, kwargs=inps, bounds=(bounds_lower, bounds_upper))
 
@@ -178,7 +186,11 @@ def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_typ
 
 	for i, (k, v) in enumerate(stellar_models.items()):
 
-		xi[i] = result['x'][i]
+		if factor_scale == 'log':
+			xi[i] = 10**result['x'][i]
+		else:
+			xi[i] = result['x'][i]
+
 		zi[i] = v['z']
 		ai[i] = v['age']
 
@@ -188,6 +200,7 @@ def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_typ
 	if show_fit:
 
 		plot_fit(x=result['x'], wl=wl, flam=flam, flam_err=flam_err, 
-			stellar_models=stellar_models, fuv_mask_type=fuv_mask_type, ndim_fit=ndim_sps+3)
+			stellar_models=stellar_models, fuv_mask_type=fuv_mask_type, ndim_fit=ndim_sps+1,
+			factor_scale=factor_scale)
 
 	return result, z, age

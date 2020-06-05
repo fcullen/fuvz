@@ -87,7 +87,7 @@ class BurstWeightsResults(object):
 		plt.show()
 
 
-	def get_best_fit_metallicity(self, setllar_models, ndim):
+	def get_best_fit_metallicity(self, stellar_models, ndim):
 
 		samples_equal = dynesty.utils.resample_equal(self.results['samples'], self.weights)
 
@@ -98,7 +98,7 @@ class BurstWeightsResults(object):
 			xi = np.empty(ndim)
 			zi = np.empty(ndim)
 
-			for j, (k, v) in enumerate(setllar_models.items()):
+			for j, (k, v) in enumerate(stellar_models.items()):
 
 				xi[j] = 10**samples_equal[:,j][i]
 				zi[j] = v['z']
@@ -114,7 +114,7 @@ class BurstWeightsResults(object):
 		self.logz_err = self.z_err / self.z
 
 
-	def get_best_fit_age(self, setllar_models, ndim):
+	def get_best_fit_age(self, stellar_models, ndim):
 
 		samples_equal = dynesty.utils.resample_equal(self.results['samples'], self.weights)
 
@@ -125,7 +125,7 @@ class BurstWeightsResults(object):
 			xi = np.empty(ndim)
 			agei = np.empty(ndim)
 
-			for j, (k, v) in enumerate(setllar_models.items()):
+			for j, (k, v) in enumerate(stellar_models.items()):
 
 				xi[j] = 10**samples_equal[:,j][i]
 				agei[j] = v['age']

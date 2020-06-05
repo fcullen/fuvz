@@ -405,9 +405,9 @@ class BurstWeights(object):
 		norm = self.normalize_model_to_spec(fmodel=fmodel)
 		fmodel *= norm
 
-		residual = ((fmodel-self.flam_obs[self.fuv_mask])/self.flam_obs_err[self.fuv_mask]) ** 2
+		resid = (fmodel - self.flam_obs[self.fuv_mask]) / self.flam_obs_err[self.fuv_mask]
 
-		return np.sum(residual)
+		return  np.sum(resid ** 2.)
 
 	def run(self, print_progress=True, nlive=500):
 
@@ -439,6 +439,9 @@ class BurstWeights(object):
 			chi2[i] = self.get_chi_squared(x=samples_equal[i,:])
 
 		maxl_params = samples_equal[np.argmin(chi2),:]
+
+		dof = len(self.wl_obs[self.fuv_mask]) - (self.ndim_sps+1)
+		print(min(chi2)/dof)
 
 		xi = np.empty(self.ndim_sps)
 		zi = np.empty(self.ndim_sps)
