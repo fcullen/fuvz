@@ -102,7 +102,6 @@ class BurstWeightsResults(object):
 
 				xi[j] = 10**samples_equal[:,j][i]
 				zi[j] = v['z']
-				#print(xi[j], zi[j])
 
 			z_final[i] = np.sum(xi * zi) / np.sum(xi)
 

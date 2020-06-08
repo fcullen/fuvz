@@ -108,7 +108,7 @@ def fn_fit_residuals(x, *args, **kwargs):
 
 	flam_model = model_flux[fuv_mask]
 
-	alam = utils.attenuation_salim_2018(wl=wl_fit/1.e4, av=x[-1], B=0.0, delta=0.0)
+	alam = utils.attenuation_salim_2018(wl=wl_fit/1.e4, av=x[-1], B=x[-2], delta=x[-3])
 	flam_model *= np.power(10, -0.4 * alam)
 
 	flam_model *= normalize_model_to_spec(flam_model=flam_model, flam_obs=flam_fit,
@@ -135,7 +135,7 @@ def plot_fit(x, wl, flam, flam_err, stellar_models, fuv_mask_type, ndim_fit, fac
 		else:
 			model_flux += x[i] * v['flam']
 
-	alam = utils.attenuation_salim_2018(wl=wl/1.e4, av=x[-1], B=0.0, delta=0.0)
+	alam = utils.attenuation_salim_2018(wl=wl/1.e4, av=x[-1], B=x[-2], delta=x[-3])
 	model_flux *= np.power(10, -0.4 * alam)
 
 	flam_model_norm = model_flux[fuv_mask]
@@ -145,9 +145,6 @@ def plot_fit(x, wl, flam, flam_err, stellar_models, fuv_mask_type, ndim_fit, fac
 	resid = (model_flux[fuv_mask] - flam[fuv_mask]) / flam_err[fuv_mask]
 	dof = len(wl[fuv_mask]) - ndim_fit
 	rchi2 = np.sum(resid ** 2.) / dof
-	print(rchi2)
-
-	#np.savetxt(fname='/Users/fcullen/Desktop/test.spec', X=np.column_stack((wl,model_flux)))
 
 	ax.plot(wl, model_flux, color='green', ds='steps', lw=1.)
 
@@ -166,7 +163,7 @@ def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_typ
 
 	# set initial guesses to 1 if none supplied:
 	if x0 is None:
-		x0 = np.ones(ndim_sps + 1)
+		x0 = np.ones(ndim_sps + 3)
 
 	inps = {'wl': wl, 'flam': flam, 'flam_err': flam_err,
 		'fuv_mask_type': fuv_mask_type, 'models': stellar_models, 'factor_scale': factor_scale}
@@ -178,7 +175,12 @@ def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_typ
 		bounds_lower = np.zeros_like(x0)
 		bounds_upper= np.ones_like(x0) * np.inf
 
-	result = least_squares(fun=fn_fit_residuals, x0=x0, kwargs=inps, bounds=(bounds_lower, bounds_upper))
+	# rescale to bounds for the slope to -2 to 2:
+	bounds_lower[-3] = -2.0
+	bounds_upper[-3] = 2.0
+
+	result = least_squares(fun=fn_fit_residuals, x0=x0, kwargs=inps, 
+		bounds=(bounds_lower, bounds_upper))
 
 	xi = np.empty(ndim_sps)
 	zi = np.empty(ndim_sps)
@@ -200,7 +202,7 @@ def maximum_likelihood_fit(wl, flam, flam_err, ages, metallicities, fuv_mask_typ
 	if show_fit:
 
 		plot_fit(x=result['x'], wl=wl, flam=flam, flam_err=flam_err, 
-			stellar_models=stellar_models, fuv_mask_type=fuv_mask_type, ndim_fit=ndim_sps+1,
+			stellar_models=stellar_models, fuv_mask_type=fuv_mask_type, ndim_fit=ndim_sps+3,
 			factor_scale=factor_scale)
 
 	return result, z, age

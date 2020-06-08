@@ -359,8 +359,10 @@ class BurstWeights(object):
 		# flat prior between 0 - 1 for all coefficients:
 		for i in range(len(u[:self.ndim_sps])):
 			x[i] = 5 * (2 * u[i] - 1)
- 
-		x[-1] = 5 * u[-1] # Av flat proper in range 0-5
+
+		x[-3] = 2.0 * (2.0 * u[-3] - 1.0) # delta flat proper in -2 to 2
+		x[-2] = 10 * u[-2] # Eb flat proper in range 0-5
+		x[-1] = 10 * u[-1] # Av flat proper in range 0-5
 
 		return x
 
@@ -376,7 +378,7 @@ class BurstWeights(object):
 		intrinsic_spec = model_flux[self.fuv_mask]
 
 		alam = utils.attenuation_salim_2018(wl=self.wl_obs[self.fuv_mask]/1.e4, 
-			av=x[-1], B=0.0, delta=0.0)
+			av=x[-1], B=x[-2], delta=x[-3])
 		fmodel = intrinsic_spec * np.power(10, -0.4 * alam)
 
 		norm = self.normalize_model_to_spec(fmodel=fmodel)
@@ -397,7 +399,7 @@ class BurstWeights(object):
 		intrinsic_spec = model_flux[self.fuv_mask]
 
 		alam = utils.attenuation_salim_2018(wl=self.wl_obs[self.fuv_mask]/1.e4, 
-			av=x[-1], B=0.0, delta=0.0)
+			av=x[-1], B=x[-2], delta=x[-3])
 		fmodel = intrinsic_spec * np.power(10, -0.4 * alam)
 
 		norm = self.normalize_model_to_spec(fmodel=fmodel)
@@ -412,7 +414,7 @@ class BurstWeights(object):
 		self.fuv_mask = self.get_fuv_continuum_mask(wl=self.wl_obs)
 
 		self.sampler = dynesty.NestedSampler(self.loglike, 
-				self.prior_trans, self.ndim_sps+1, bootstrap=0, nlive=nlive)
+				self.prior_trans, self.ndim_sps+3, bootstrap=0, nlive=nlive)
 
 		self.sampler.run_nested(print_progress=print_progress)
 		
@@ -438,7 +440,7 @@ class BurstWeights(object):
 
 		maxl_params = samples_equal[np.argmin(chi2),:]
 
-		dof = len(self.wl_obs[self.fuv_mask]) - (self.ndim_sps+1)
+		dof = len(self.wl_obs[self.fuv_mask]) - (self.ndim_sps+3)
 		print(min(chi2)/dof)
 
 		xi = np.empty(self.ndim_sps)
@@ -485,9 +487,13 @@ class BurstWeights(object):
 
 		av = dynesty.utils.quantile(x=fit_results['samples'][:,-1], 
 					q=0.5, weights=fit_w)
+		eb = dynesty.utils.quantile(x=fit_results['samples'][:,-2], 
+					q=0.5, weights=fit_w)
+		delta = dynesty.utils.quantile(x=fit_results['samples'][:,-3], 
+					q=0.5, weights=fit_w)
 
 		alam = utils.attenuation_salim_2018(wl=self.wl_obs/1.e4, 
-			av=av, B=0.0, delta=0.0)
+			av=av, B=eb, delta=delta)
 
 		fmodel = model_flux * np.power(10, -0.4 * alam)
 
