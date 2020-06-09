@@ -253,13 +253,6 @@ class BurstWeights(object):
 		# the dust law:
 		self.dust_law = dust_law
 
-		# the dimensions of the fit:
-		if self.dust_law == 'salim':
-			self.ndim_fit = self.ndim_sps+3
-		elif self.dust_law == 'calzetti':
-			self.ndim_fit = self.ndim_sps+1
-
-
 	
 	def input_observations(self, wl, flam, flam_err):
 
@@ -333,6 +326,13 @@ class BurstWeights(object):
 		self.model_zs = metallicities
 
 		self.ndim_sps = len(ages) * len(metallicities)
+
+		# total dimensions of the fit (sps + dust params):
+		if self.dust_law == 'salim':
+			self.ndim_fit = self.ndim_sps+3
+		elif self.dust_law == 'calzetti':
+			self.ndim_fit = self.ndim_sps+1
+
 
 		# dictionary to hold the final models:
 		self.stellar_models = {}
